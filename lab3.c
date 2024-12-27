@@ -25,7 +25,8 @@ typedef struct {
 void free_args_dirs_files(ThreadArgs* free_args, DIR* free_dir, int free_src_fd,
                                                                int free_dst_fd){
    free(free_args->src);
-   free(free_args->dst);
+   if (free_args->dst != NULL)
+       free(free_args->dst);
    free(free_args);
    if (free_dir != NULL)
        closedir(free_dir);
@@ -226,7 +227,17 @@ void *copy_directory(void *arg) {
 
 
            new_args->src = strdup(src_path);
+           if (new_args->src == NULL) {
+               fprintf(stderr, "copy_directory: cannot allocate memory for new args->src\n");
+               free(new_args);
+               continue;
+           }
            new_args->dst = strdup(dst_path);
+           if (new_args->dst == NULL) {
+               fprintf(stderr, "copy_directory: cannot allocate memory for new args->dst\n");
+               free_args_dirs_files(new_args, NULL, -1, -1);
+               continue;
+           }
 
 
            pthread_t dir_thread;
@@ -248,7 +259,17 @@ void *copy_directory(void *arg) {
 
 
            file_args->src = strdup(src_path);
+           if (file_args->src == NULL) {
+               fprintf(stderr, "copy_directory: cannot allocate memory for file args->src\n");
+               free(file_args);
+               continue;
+           }
            file_args->dst = strdup(dst_path);
+           if (file_args->dst == NULL) {
+               fprintf(stderr, "copy_directory: cannot allocate memory for file args->dst\n");
+               free_args_dirs_files(file_args, NULL, -1, -1);
+               continue;
+           }
 
 
            pthread_t file_thread;
@@ -322,11 +343,35 @@ int main(int argc, char *argv[]) {
            k++;
        }
        snprintf(tmp_dst_dir, sizeof(tmp_dst_dir), "%s%s", dst_dir, fold_name);
+
+
        args->src = strdup(src_dir);
+       if (args->src == NULL) {
+           fprintf(stderr, "main: cannot allocate memory for args->src\n");
+           free(args);
+           return 1;
+       }
        args->dst = strdup(tmp_dst_dir);
+       if (args->dst == NULL) {
+           fprintf(stderr, "main: cannot allocate memory for file args->dst\n");
+           free_args_dirs_files(args, NULL, -1, -1);
+           return 1;
+       }
+
+
    } else {
        args->src = strdup(src_dir);
+       if (args->src == NULL) {
+           fprintf(stderr, "main: cannot allocate memory for args->src\n");
+           free(args);
+           return 1;
+       }
        args->dst = strdup(dst_dir);
+       if (args->dst == NULL) {
+           fprintf(stderr, "main: cannot allocate memory for file args->dst\n");
+           free_args_dirs_files(args, NULL, -1, -1);
+           return 1;
+       }
    }
 
 
@@ -341,3 +386,9 @@ int main(int argc, char *argv[]) {
  
    pthread_exit(0);
 }
+
+
+
+
+
+
